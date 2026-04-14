@@ -1,7 +1,7 @@
 ---
 name: skill-orchestrator
 description: "Multi-skill orchestrator: decompose complex asks, discover skills, plan parallel/serial steps, checkpoints, merge outputs; optional JSON bundle for hosts. Use when tasks span multiple domains or need coordinated sub-skills. 技能编排器：多领域拆解、编排、合并，可选机器可读 JSON。"
-version: "2.1.0"
+version: "2.0.3"
 metadata:
   openclaw:
     emoji: "🧭"
@@ -16,7 +16,7 @@ metadata:
         - .workbuddy/memory
 ---
 
-# 技能编排器 v2.1.0
+# 技能编排器 v2.0.3
 
 > **在 ClawHub 网页上阅读**：部分代码围栏会被语法高亮成浅灰字 + 浅底，对比度低是**站点预览样式**所致，并非文件损坏。若看不清，请在 [GitHub 上查看](https://github.com/Windymonkeys/skill-orchestrator/blob/main/SKILL.md) 或使用本地编辑器。
 
@@ -207,7 +207,7 @@ metadata:
 - **执行摘要** — 调用 Skill、耗时、子任务完成数、冲突处理摘要、`session_id`
 - **分领域正文** — 各 step 结论；冲突处注明来源 `step_id` 与简短证据摘录（长上下文时优先**摘要 + 引用**，避免无意义堆砌全文）
 - **下一步建议** — 编号列表
-- **页脚** — `技能编排器 · v2.1.0 · {session_id}`
+- **页脚** — `技能编排器 · v2.0.3 · {session_id}`
 
 **工作记忆**（若写入 `.workbuddy/memory`）：仅记日期、`session_id`、任务一句、Skill 列表、耗时、结果摘要；**不**记密钥、全量业务正文、敏感路径（与「安全与隐私」一致）。
 
@@ -317,7 +317,7 @@ metadata:
 
 ---
 
-> **技能编排器 v2.1.0，随时待命。**
+> **技能编排器 v2.0.3，随时待命。**
 > 你只管说目标，多技能协作由编排器串联。
 > 兼容 OpenClaw / WorkBuddy / ClawHub / Claw IDE / 任意 AI 平台，无需外部依赖。
 > 当前已安装 Skill 数量以本地 Registry 扫描为准；领域覆盖取决于已装 Skill + 内置兜底矩阵。
