@@ -1,0 +1,7 @@
+# 发布/同步时忽略（见 ClawHub skill-format 文档）
+.git/
+**/.git/
+.DS_Store
+**/.DS_Store
+.clawhub/
+.clawdhub/
