@@ -5,7 +5,7 @@ version: "2.0.1"
 metadata:
   openclaw:
     emoji: "🧭"
-    homepage: https://github.com/Windymonkeys
+    homepage: https://github.com/Windymonkeys/skill-orchestrator
 ---
 
 # 技能编排器 v2.0.1
