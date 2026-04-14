@@ -120,6 +120,10 @@ function mergeResults(taskResults: TaskResult[]): MergeResult {
   4. 无法裁决 → 呈现双方 + 主 Agent 判断
 ```
 
+## 长上下文与溯源
+
+窗口变长后，仍优先向下游传递 **结构化摘要 + `step_id` +短证据摘录**（≤200 字/条），而非无脑拼接全文；冲突条目在 `machine-contract.md` 的 `evidence_snippet` 中落地，便于审计与人工复核。
+
 ## 输出格式规范
 
 最终合并输出必须包含：

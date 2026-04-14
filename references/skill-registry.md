@@ -67,14 +67,30 @@ Source 1 > Source 2 > Source 3 > Source 4
   description: "技能编排器 - 理解复杂需求，自动拆解并调度多个专家Skill协作"
   location: "user"
   source: "local"
+  risk_tier: "low"
   capabilities:
     - orchestrate
     - dispatch
     - merge_results
+  consumes: ["user_goal"]
+  produces: ["markdown_report", "optional_json_bundle"]
   tags: ["orchestration", "multi-skill"]
   installed: true
   install_path: "~/.workbuddy/skills/skill-orchestrator"
 ```
+
+## 建议扩展字段（可选，利于匹配与安全门禁）
+
+各 Skill 可在 `SKILL.md` frontmatter 或侧车 YAML 中声明（与 OpenClaw `metadata.openclaw` 兼容时最佳）：
+
+| 字段 | 说明 |
+|------|------|
+| `risk_tier` | `low` / `medium` / `high`，供编排器与 Checkpoint 规则引用 |
+| `capabilities` | 短标签数组，如 `read_pdf`、`orchestrate` |
+| `consumes` | 期望的上游输入类型，如 `user_brief`、`upstream_markdown` |
+| `produces` | 输出类型，如 `markdown_report`、`json_metrics` |
+
+**skill-orchestrator 自描述示例**：`risk_tier: low`；`capabilities: [orchestrate, dispatch, merge_results]`；`consumes: [user_goal]`；`produces: [markdown_report, optional_json_bundle]`。
 
 ## Source 2：ClawHub Marketplace 查询
 

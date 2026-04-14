@@ -1,14 +1,24 @@
 ---
 name: skill-orchestrator
-description: "Multi-skill orchestrator: decompose complex asks, discover skills, plan parallel/serial steps, checkpoints, merge outputs. Use when tasks span multiple domains or need coordinated sub-skills. 技能编排器：多领域/多步骤需求拆解、编排与合并。"
-version: "2.0.1"
+description: "Multi-skill orchestrator: decompose complex asks, discover skills, plan parallel/serial steps, checkpoints, merge outputs; optional JSON bundle for hosts. Use when tasks span multiple domains or need coordinated sub-skills. 技能编排器：多领域拆解、编排、合并，可选机器可读 JSON。"
+version: "2.1.0"
 metadata:
   openclaw:
     emoji: "🧭"
     homepage: https://github.com/Windymonkeys/skill-orchestrator
+    requires:
+      env:
+        - SKILL_PATH
+      config:
+        - ~/.workbuddy/skills
+        - .workbuddy/skills
+        - ~/.claw/skills
+        - .workbuddy/memory
 ---
 
-# 技能编排器 v2.0.1
+# 技能编排器 v2.1.0
+
+> **在 ClawHub 网页上阅读**：部分代码围栏会被语法高亮成浅灰字 + 浅底，对比度低是**站点预览样式**所致，并非文件损坏。若看不清，请在 [GitHub 上查看](https://github.com/Windymonkeys/skill-orchestrator/blob/main/SKILL.md) 或使用本地编辑器。
 
 ## When to Use（何时启用）
 
@@ -30,14 +40,12 @@ metadata:
 
 **安装后会自动发现以下 Skill 来源（无需额外配置）：**
 
-```
-1. 本地目录 ~/.workbuddy/skills/（WorkBuddy 用户级 Skill）
-2. 当前项目 .workbuddy/skills/（WorkBuddy 项目级 Skill）
-3. Claw 本地 ~/.claw/skills/（Claw 用户级 Skill）
-4. 自定义路径（通过环境变量 SKILL_PATH 设置）
-5. ClawHub 市场（当本地 Skill 不足时自动查询）
+1. 本地目录 `~/.workbuddy/skills/`（WorkBuddy 用户级 Skill）
+2. 当前项目 `.workbuddy/skills/`（WorkBuddy 项目级 Skill）
+3. Claw 本地 `~/.claw/skills/`（Claw 用户级 Skill）
+4. 自定义路径（环境变量 `SKILL_PATH`，逗号分隔）
+5. ClawHub 市场（本地匹配不足时再检索）
 6. 内置兜底矩阵（始终可用，零依赖）
-```
 
 **无任何外部依赖，即使上述路径全部不存在，编排器仍可使用内置 Skill 模拟运行。**
 
@@ -45,11 +53,29 @@ metadata:
 
 > **一句话定位**：你是一个可执行的技能指挥官。用户只需要说出目标，复杂的多技能协作由你处理。
 
+## 参考文档索引（references/）
+
+| 文件 | 用途 |
+|------|------|
+| `references/machine-contract.md` | 可选 JSON：`plan` / `events` / `merge` |
+| `references/skill-registry.md` | 多源发现、评分、Registry 扩展字段 |
+| `references/orchestration-engine.md` | 任务图、并联/串联、执行器思路 |
+| `references/execution-tracker.md` | 进度与追踪结构 |
+| `references/result-merger.md` | 合并、冲突、长上下文溯源 |
+| `references/human-in-the-loop.md` | Checkpoint 话术与类型 |
+
 ---
 
 ## 执行模式
 
 **当你收到一个复杂任务（涉及多个领域、多步骤、或需要多种专业知识）时，自动激活本编排器流程。**
+
+**全局约定（建议始终遵守）：**
+
+- **session_id**：整场编排唯一，格式建议 `orch-YYYYMMDD-` + 4 位字母数字（与执行追踪一致）。
+- **step_id**：与计划中的 `step-1`、`step-2a` 等一致；进度、合并、报错均带 `session_id` + `step_id`，便于复盘与自动化重试。
+- **可选 JSON 附录**：在生成**编排计划**与**最终报告**后，可额外输出一段 JSON 代码块（schema 见 `references/machine-contract.md`）；**面向人类**的说明仍以正文 Markdown 为主，JSON 仅供宿主/脚本/评测解析。
+- **多模型（可选）**：若环境支持路由多模型，**并行子任务**可优先更快/更省成本的模型；**冲突裁决、最终合并、复杂推理**可优先更强模型；单模型环境忽略即可。
 
 ---
 
@@ -57,11 +83,8 @@ metadata:
 
 读取用户需求，输出解析结果：
 
-```
-═══════════════════════════════════════════════
-⚙️  技能编排器 · 意图解析中...
-═══════════════════════════════════════════════
-```
+> **意图解析（过程提示）** · 技能编排器 · 意图解析中…
+
 
 **解析维度：**
 - **任务类型**：综合方案 / 分析评估 / 内容生成 / 指导建议 / 信息查询
@@ -76,12 +99,7 @@ metadata:
 
 **输出模板：**
 
-```
-🎯 任务类型：综合方案
-📊 涉及领域：产品规划 + 财务评估 + 技术选型
-🔢 复杂度：3个子任务，1条并联链
-⚡ 执行建议：产品规划∥财务评估（并联）→ 技术选型（串联）
-```
+> **输出模板（示例）** 任务类型：综合方案；涉及领域：产品规划 + 财务评估 + 技术选型；复杂度：3 个子任务、1 条并联链；执行建议：产品规划与财务评估（并联）→ 技术选型（串联）。
 
 ---
 
@@ -94,73 +112,33 @@ metadata:
 3. 按语义匹配度对用户需求进行排序
 4. 选择 Top-2~4 个最相关的 Skill
 
-**匹配算法（与 `references/skill-registry.md` 一致）：**
-```
-score = exact_match×10 + tag_match×5 + desc_sim×2 + source_bonus
-（source_bonus：本地已安装 +3；市场可装 +1；内置兜底 0）
-```
+**匹配算法**（与 references/skill-registry.md 一致）：
 
-**输出：**
+`score = exact_match×10 + tag_match×5 + desc_sim×2 + source_bonus`（source_bonus：本地已安装 +3；市场可装 +1；内置兜底 0）
 
-```
-═══════════════════════════════════════════════
-📡 技能发现
-═══════════════════════════════════════════════
+**输出（示例；引用块在 ClawHub 网页预览中通常比代码围栏更易读）：**
 
-[A] pdf          (score: 92)  ← 精确匹配：关键词"PDF"
-[B] xlsx         (score: 61)  ← Tag匹配：文档处理
-[C] docx         (score: 58)  ← Tag匹配：文档处理
-
-[✓] 选定：
-  • 产品总监 Skill（本地已安装）
-  • 财务顾问 Skill（本地已安装）
-  • 技术选型 Skill（内置模拟）
-
-═══════════════════════════════════════════════
-```
+> **技能发现（示例）**  
+> [A] pdf (score: 92) — 精确匹配：关键词「PDF」  
+> [B] xlsx (score: 61) — Tag 匹配：文档处理  
+> [C] docx (score: 58) — Tag 匹配：文档处理  
+> 选定：产品总监 Skill（本地已安装）；财务顾问 Skill（本地已安装）；技术选型 Skill（内置模拟）
 
 ---
 
 ## Step 3：编排计划生成
 
-**根据任务图结构，自动生成编排计划：**
+**根据任务图结构，自动生成编排计划（示例 + 可选 JSON）：**
 
-```
-═══════════════════════════════════════════════
-🗺️  编排计划
-═══════════════════════════════════════════════
+> **编排计划（骨架）**  
+> **step-1** 意图解析 — 内置 / default / 无依赖  
+> **step-2a** 产品规划 — 产品总监 / acceptEdits / 与 step-2b 并联  
+> **step-2b** 财务评估 — 财务顾问 / acceptEdits / 与 step-2a 并联  
+> **step-3** 技术架构 — 技术选型 / default / 依赖 step-2a、step-2b；Prompt 注入上游摘要  
+> **step-4** 综合报告 — 内置 / 依赖 step-3；合并 → 冲突检测 → 裁决  
+> **可选**：输出 JSON `plan`（`references/machine-contract.md`）。
 
-[step-1]  意图解析
-  Skill：内置（编排器自身）
-  模式：default
-  依赖：无
 
-[step-2a] 产品规划分析
-  Skill：产品总监
-  模式：acceptEdits
-  依赖：无（与 step-2b 并联）
-  Prompt：{动态生成}
-
-[step-2b] 财务可行性评估
-  Skill：财务顾问
-  模式：acceptEdits
-  依赖：无（与 step-2a 并联）
-  Prompt：{动态生成}
-
-[step-3]  技术架构设计
-  Skill：技术选型
-  模式：default
-  依赖：step-2a, step-2b（等两者完成）
-  Prompt：{动态生成，上下文注入上游结果}
-
-[step-4]  综合报告
-  Skill：内置（编排器自身）
-  模式：default
-  依赖：step-3
-  动作：合并所有结果 → 检测冲突 → 裁决 → 输出
-
-═══════════════════════════════════════════════
-```
 
 **执行模式选择规则：**
 
@@ -176,26 +154,12 @@ score = exact_match×10 + tag_match×5 + desc_sim×2 + source_bonus
 
 ## Step 4：Checkpoint 确认（可选）
 
-**满足以下任一条件时，输出 Checkpoint 等待用户确认：**
+**满足以下任一条件时，输出 Checkpoint：**
 
-```
-═══════════════════════════════════════════════
-🛑 编排计划已生成，请确认
-═══════════════════════════════════════════════
+> **请确认编排计划** · 任务 {一句话} · 子任务 {N}（{并联} 并 / {链} 链）· 预计 {时间} · Skill {列表}  
+> [Y] 确认 · [N] 取消 · [E] 编辑 · [A] 仅前 {X} 步
 
-📋 任务：{任务一句话描述}
-🔢 子任务：{N} 个（{并联数} 并联，{串联链数} 串联链）
-⏱️  预计：{估算时间}
-🔧 将调用：{Skill列表}
 
-请选择：
-  [Y] 确认，开始执行
-  [N] 取消
-  [E] 编辑计划（改子任务/Skill）
-  [A] 仅执行前 {X} 个任务
-
-═══════════════════════════════════════════════
-```
 
 **自动触发条件（满足任一）：**
 - 子任务数 ≥ 3
@@ -207,23 +171,11 @@ score = exact_match×10 + tag_match×5 + desc_sim×2 + source_bonus
 
 ## Step 5：执行追踪
 
-**执行过程中，向用户实时输出进度：**
+**执行过程中输出进度（示例，含 session / step）：**
 
-```
-═══════════════════════════════════════════════
-⚙️  技能编排器 · 执行中
-═══════════════════════════════════════════════
-📊 进度  ██████░░░░░░░░░░  2/5  (40%)
-
-✅ [step-1] 意图解析         0.2s  完成
-🔄 [step-2a] 产品规划        运行中 (58%)    [产品总监]
-🔄 [step-2b] 财务评估        运行中 (41%)    [财务顾问]
-⏳ [step-3]  技术选型         等待中（依赖 step-2a,b）
-⏳ [step-4]  综合报告         等待中
-
-📡 事件：step-2b 已完成，正在合并中间结果...
-═══════════════════════════════════════════════
-```
+> **执行中** · session `{session_id}` · 进度 2/5（40%）
+> step-1 意图解析 0.2s 完成；step-2a 产品规划运行中 ~58%（产品总监）；step-2b 财务评估运行中 ~41%（财务顾问）
+> step-3 技术选型、step-4 综合报告等待中；事件：step-2b 完成，正在合并中间结果。
 
 ---
 
@@ -233,62 +185,31 @@ score = exact_match×10 + tag_match×5 + desc_sim×2 + source_bonus
 
 1. **收集**：收集所有子任务的结构化输出
 2. **检测**：检测结论冲突（数字差 > 20%、方向相斥）
-3. **裁决**：按优先级规则自动裁决或输出 Checkpoint 请求用户裁决
+3. **裁决**：按优先级自动裁决或触发 Checkpoint（细则 `references/result-merger.md`）
 
-```
-═══════════════════════════════════════════════
-⚡ 结果合并
-═══════════════════════════════════════════════
+**合并摘要（示例）：**
 
-✅ 收到 3 个子任务结果
-⚠️  检测到 1 个冲突（定价策略）
-  → 方案 A：¥299（高端）
-  → 方案 B：¥99（性价比）
-  → 裁决：分层定价（基础版 ¥99 + 高级版 ¥299）
-  → 置信度：0.82
+> 3 份子结果 · 冲突 1（定价 A 299元 / B 99 元）→ 建议分层（入门 99 + 高级 299），置信度 0.82；整次合并 0.88
+> **可选**：`merge` JSON（`evidence_snippet`）见 `references/machine-contract.md`。
 
-✅ 合并完成，置信度：0.88
-═══════════════════════════════════════════════
-```
+
 
 ---
 
 ## Step 7：最终输出
 
-**编排完成后，输出结构化报告：**
+**编排完成后，输出结构化报告（Markdown）；可选在报告末尾追加 JSON bundle（`references/machine-contract.md`）。**
 
-```markdown
-# 综合方案报告
+报告骨架：
 
-## 任务概览
-{一句话描述}
+- **# 综合方案报告**
+- **任务概览** — {一句话}
+- **执行摘要** — 调用 Skill、耗时、子任务完成数、冲突处理摘要、`session_id`
+- **分领域正文** — 各 step 结论；冲突处注明来源 `step_id` 与简短证据摘录（长上下文时优先**摘要 + 引用**，避免无意义堆砌全文）
+- **下一步建议** — 编号列表
+- **页脚** — `技能编排器 · v2.1.0 · {session_id}`
 
-## 执行摘要
-- 调用 Skill：[{列表}]
-- 执行时长：{X} 秒
-- 子任务：{完成数}/{总数} 完成
-- 冲突处理：{N} 个（已裁决/保留）
-
-## {各领域详细内容}
-
-## 下一步建议
-1. {建议1}
-2. {建议2}
-
----
-> 技能编排器 · v2.0.1 · {session_id}
-> 有任何调整需求，直接告诉我。
-```
-
-**同时将本次编排记录写入工作记忆：**
-
-```markdown
-## {YYYY-MM-DD} 编排记录
-Session: {session_id}
-任务：{任务描述}
-调用：[{skill列表}]
-执行：{时长} | 结果：{摘要}
-```
+**工作记忆**（若写入 `.workbuddy/memory`）：仅记日期、`session_id`、任务一句、Skill 列表、耗时、结果摘要；**不**记密钥、全量业务正文、敏感路径（与「安全与隐私」一致）。
 
 ---
 
@@ -302,15 +223,17 @@ Session: {session_id}
 | 财务评估 | "作为财务顾问，对以下商业计划进行财务可行性分析..." |
 | 技术选型 | "作为技术架构师，为以下场景推荐技术方案..." |
 | 市场分析 | "作为市场专家，对以下产品进行竞争分析..." |
-| 合同审查 | 调用 `docx` Skill |
-| 视频生成 | 调用 `eachlabs-video-edit` Skill |
-| 网页自动化 | 调用 `Browser Automation` Skill |
+| 合同审查 | Registry 中存在 `docx` 等文档 Skill 则调用；否则内置文字模拟 |
+| 视频生成 | Registry 中存在视频类 Skill 则调用；否则内置脚本/分镜文字模拟 |
+| 网页自动化 | Registry 中存在浏览器自动化 Skill 则调用；否则内置步骤描述模拟 |
 
 ---
 
 ## 安全与隐私
 
 本节说明编排器涉及的文件访问行为及对应的安全缓解措施，透明告知用户，无需因风险提示放弃使用。
+
+**OpenClaw / ClawHub**：frontmatter 中 `metadata.openclaw.requires` 列出**可能被正文指示读取**的环境变量与路径（如 `SKILL_PATH`、各 skills 目录、`.workbuddy/memory`），用于与安全分析「声明一致」；均为**可选**，缺失时仍可走内置兜底，不代表安装后一定会访问磁盘。
 
 ### 涉及的文件访问
 
@@ -389,19 +312,12 @@ Session: {session_id}
 
 ## 边界限制
 
-```
-不调度：
-- 金钱诈骗 / 违法行为
-- 医疗诊断（建议就医）
-- 政治敏感话题
-- 未经同意的个人信息处理
-
-遇到以上 → 拒绝 + 替代建议 + 结束编排
-```
+**不调度**：金钱诈骗或违法行为；医疗诊断（建议就医）；政治敏感话题；未经同意的个人信息处理。  
+**处理**：拒绝 + 替代建议 + 结束编排。
 
 ---
 
-> **技能编排器 v2.0.1，随时待命。**
-> 你只管说你想要什么，复杂的多技能协作，我来处理。💪
+> **技能编排器 v2.1.0，随时待命。**
+> 你只管说目标，多技能协作由编排器串联。
 > 兼容 OpenClaw / WorkBuddy / ClawHub / Claw IDE / 任意 AI 平台，无需外部依赖。
 > 当前已安装 Skill 数量以本地 Registry 扫描为准；领域覆盖取决于已装 Skill + 内置兜底矩阵。
