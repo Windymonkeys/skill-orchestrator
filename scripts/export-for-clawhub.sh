@@ -12,11 +12,12 @@ fi
 
 rm -rf "$DEST"
 mkdir -p "$DEST"
-git -C "$ROOT" archive HEAD | tar -x -C "$DEST"
+# Only skill payload: ClawHub web rejects extensionless dotfiles (.gitignore, .clawhubignore);
+# omit dev-only paths (scripts/, etc.).
+git -C "$ROOT" archive HEAD SKILL.md references | tar -x -C "$DEST"
 
-tracked="$(git -C "$ROOT" ls-files | wc -l | awk '{print $1}')"
 exported="$(find "$DEST" -type f | wc -l | awk '{print $1}')"
 
 echo "Exported to: $DEST"
-echo "Files: $exported (git tracked: $tracked)"
+echo "Upload bundle files: $exported (SKILL.md + references/ only)"
 echo "Use this folder in ClawHub; do not select the repo root that contains .git/."
